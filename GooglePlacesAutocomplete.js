@@ -61,6 +61,13 @@ const defaultStyles = {
   },
 };
 
+const ds = new ListView.DataSource({rowHasChanged: function rowHasChanged(r1, r2) {
+  if (typeof r1.isLoading !== 'undefined') {
+    return true;
+  }
+  return r1 !== r2;
+}});
+
 const GooglePlacesAutocomplete = React.createClass({
 
   propTypes: {
@@ -134,12 +141,6 @@ const GooglePlacesAutocomplete = React.createClass({
   },
 
   getInitialState() {
-    const ds = new ListView.DataSource({rowHasChanged: function rowHasChanged(r1, r2) {
-      if (typeof r1.isLoading !== 'undefined') {
-        return true;
-      }
-      return r1 !== r2;
-    }});
     return {
       text: this.props.getDefaultValue(),
       dataSource: ds.cloneWithRows(this.buildRowsFromResults([])),
@@ -150,7 +151,7 @@ const GooglePlacesAutocomplete = React.createClass({
   setAddressText(address) {
     this.setState({ text: address })
   },
-  
+
   getAddressText(){
     return this.state.text
   },
@@ -181,6 +182,12 @@ const GooglePlacesAutocomplete = React.createClass({
   },
 
   componentWillReceiveProps(nextProps) {
+    if (nextProps.predefinedPlaces !== this.props.predefinedPlaces) {
+      this.setState({
+        dataSource: ds.cloneWithRows(this.buildRowsFromResults(this._results, nextProps.predefinedPlaces)),
+      });
+    }
+
     if (nextProps.listViewDisplayed !== 'auto') {
       this.setState({
         listViewDisplayed: nextProps.listViewDisplayed,
@@ -291,23 +298,23 @@ const GooglePlacesAutocomplete = React.createClass({
             }
           } else {
             this._disableRowLoaders();
-            
+
             if (this.props.autoFillOnNotFound) {
               this.setState({
                 text: rowData.description,
               });
               delete rowData.isLoading;
             }
-            
+
             if (!this.props.onNotFound)
               console.warn('google places autocomplete: ' + responseJSON.status);
             else
               this.props.onNotFound(responseJSON);
-            
+
           }
         } else {
           this._disableRowLoaders();
-          
+
           if (!this.props.onFail)
             console.warn('google places autocomplete: request could not be completed or has been aborted');
           else
